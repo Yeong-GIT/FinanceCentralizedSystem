@@ -12,7 +12,7 @@
 	<artifactId>FinanceSystem</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>FinanceSystem</name>
-	<description>Demo project for Spring Boot</description>
+	<description>Centralized Finance System</description>
 	<url/>
 	<licenses>
 		<license/>
