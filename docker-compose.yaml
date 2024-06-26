@@ -1,34 +1,46 @@
+version: '3.8'
+
 services:
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:7.6.1
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     ports:
-      - "2181:2181"
+      - "2183:2183"
     networks:
       - finance-network
     volumes:
       - zookeeper-data:/var/lib/zookeeper  # Adding volume for Zookeeper data
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc 127.0.0.1 2181 | grep imok"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.6.1
     depends_on:
       - zookeeper
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2183
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:29092,OUTSIDE://localhost:9092
-      KAFKA_LISTENERS: INSIDE://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:29094,OUTSIDE://localhost:9094
+      KAFKA_LISTENERS: INSIDE://0.0.0.0:29094,OUTSIDE://0.0.0.0:9094
       KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     ports:
-      - "9092:9092"
+      - "9094:9094"
     networks:
       - finance-network
     volumes:
       - kafka-data:/var/lib/kafka/data  # Adding volume for Kafka data
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   postgres-financesystemdb:
     image: postgres:15-alpine
@@ -43,6 +55,11 @@ services:
       - "5434:5432"
     networks:
       - finance-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   financesystem-service:
     build:
@@ -55,7 +72,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-financesystemdb:5432/centralizedfinancedb
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 1234
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka-finance:29094
     networks:
       - finance-network
     depends_on:
