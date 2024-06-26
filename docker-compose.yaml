@@ -1,43 +1,43 @@
-version: '3.8'
-
 services:
-  zookeeper:
+  zookeeper-finance:
     image: confluentinc/cp-zookeeper:7.6.1
+    container_name: zookeeper-finance
     environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_CLIENT_PORT: 2183  # Changed to avoid conflict
       ZOOKEEPER_TICK_TIME: 2000
     ports:
-      - "2183:2183"
+      - "2183:2183"  # Exposing a different port
     networks:
       - finance-network
     volumes:
-      - zookeeper-data:/var/lib/zookeeper  # Adding volume for Zookeeper data
+      - zookeeper-data-finance:/var/lib/zookeeper  # Adding volume for Zookeeper data
     healthcheck:
-      test: ["CMD-SHELL", "echo ruok | nc 127.0.0.1 2181 | grep imok"]
+      test: ["CMD-SHELL", "echo ruok | nc 127.0.0.1 2183 | grep imok"]
       interval: 30s
       timeout: 10s
       retries: 5
 
-  kafka:
+  kafka-finance:
     image: confluentinc/cp-kafka:7.6.1
+    container_name: kafka-finance
     depends_on:
-      - zookeeper
+      - zookeeper-finance
     environment:
-      KAFKA_BROKER_ID: 3
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2183
+      KAFKA_BROKER_ID: 3  # Different ID
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-finance:2183
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:29094,OUTSIDE://localhost:9094
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka-finance:29094,OUTSIDE://localhost:9094
       KAFKA_LISTENERS: INSIDE://0.0.0.0:29094,OUTSIDE://0.0.0.0:9094
       KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     ports:
-      - "9094:9094"
+      - "9094:9094"  # Different port to avoid conflict
     networks:
       - finance-network
     volumes:
-      - kafka-data:/var/lib/kafka/data  # Adding volume for Kafka data
+      - kafka-data-finance:/var/lib/kafka/data  # Adding volume for Kafka data
     healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9094"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -72,11 +72,11 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-financesystemdb:5432/centralizedfinancedb
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 1234
-      KAFKA_BOOTSTRAP_SERVERS: kafka-finance:29094
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka-finance:29094  # Using correct Kafka broker
     networks:
       - finance-network
     depends_on:
-      - kafka
+      - kafka-finance
       - postgres-financesystemdb
 
 networks:
@@ -85,5 +85,5 @@ networks:
 
 volumes:
   postgres-financesystem-data:
-  kafka-data:
-  zookeeper-data:
+  kafka-data-finance:
+  zookeeper-data-finance:
